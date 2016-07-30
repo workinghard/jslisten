@@ -55,4 +55,5 @@ button4=
 ## Known limitations
 
  * If you have many different /dev/inputs, you might need to adjust this program to search for special one.
+ * Kodi and X11 are blocking /dev/input/* events. For X11 you can add an exception in /usr/share/X11/xorg.conf.d/10-quirks.conf but Kodi is ... nasty ...
 
