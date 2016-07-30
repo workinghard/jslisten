@@ -43,12 +43,14 @@ Following example for Raspbian. Should work for many other distributions almost 
  * Make sure this script/program can handle multiple simultanios calls! Even if the daemon will wait till this program ends, you never know... And we like to press key combinations many times, if something doesn't work immediately...
  
 Here is my config example:
+```
 [Generic]
 program="/opt/bin/modeSwitcher.sh"
 button1=10
 button2=11
 button3=0
 button4=
+```
 
 ## Known limitations
 
