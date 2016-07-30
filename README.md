@@ -20,5 +20,8 @@ Main purpose for this development is a switcher between Kodi and Retropie with t
 If you have many different /dev/inputs, you might adjust this program to search for special one.
 
 ## Installation
+Following example for Raspbian. Should work for many other distributions almost the same way.
  * Use the precompiled binary in /bin or run "# make" to get the binary
- * df
+ * Place the binary to "/opt/bin" (if you change the folder, please update your init script) 
+ * Copy the init script "utils/jslisten-init" to "/etc/init.d/jslisten"
+ * Execute "# update-rc.d jslisten defaults" to make the daemon run on startup
