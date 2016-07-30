@@ -1,0 +1,60 @@
+#!/bin/sh
+# kFreeBSD do not accept scripts as interpreters, using #!/bin/sh and sourcing.
+if [ true != "$INIT_D_SCRIPT_SOURCED" ] ; then
+    set "$0" "$@"; INIT_D_SCRIPT_SOURCED=true . /lib/init/init-d-script
+fi
+### BEGIN INIT INFO
+# Provides:          jslisten
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Listen to the joystick input and run a script on key combination
+# Description:       This file should be used to construct scripts to be
+#                    placed in /etc/init.d.  This example start a
+#                    single forking daemon capable of writing a pid
+#                    file.  To get other behavoirs, implemend
+#                    do_start(), do_stop() or other functions to
+#                    override the defaults in /lib/init/init-d-script.
+### END INIT INFO
+
+# Author: Nikolai Rinas <nrinas@cube4fun.org>
+#
+
+DESC="jslisten daemon"
+NAME="jslisten"
+PIDFILE="/var/run/${NAME}.pid"
+DAEMON="/opt/bin/$NAME"
+
+do_start_cmd() {
+        start-stop-daemon --start --background --make-pidfile --quiet ${PIDFILE:+--pidfile ${PIDFILE}} \
+            $START_ARGS \
+            --startas $DAEMON --name $NAME --exec $DAEMON --test > /dev/null \
+            || return 1
+        start-stop-daemon --start --background --make-pidfile --quiet ${PIDFILE:+--pidfile ${PIDFILE}} \
+            $START_ARGS \
+            --startas $DAEMON --name $NAME --exec $DAEMON -- $DAEMON_ARGS \
+            || return 2
+}
+
+do_stop_cmd_123() {
+        start-stop-daemon --stop --quiet --retry=TERM/30/INT/5 \
+            $STOP_ARGS \
+            ${PIDFILE:+--pidfile ${PIDFILE}} --name $NAME --exec $DAEMON
+        RETVAL="$?"
+        [ "$RETVAL" = 2 ] && return 2
+        # Wait for children to finish too if this is a daemon that forks
+        # and if the daemon is only ever run from this initscript.
+        # If the above conditions are not satisfied then add some other code
+        # that waits for the process to drop all resources that could be
+        # needed by services started subsequently.  A last resort is to
+        # sleep for some time.
+        start-stop-daemon --stop --quiet --oknodo --retry=0/30/INT/5 \
+            $STOP_ARGS \
+            --exec $DAEMON
+        [ "$?" = 2 ] && return 2
+        # Many daemons don't delete their pidfiles when they exit.
+        rm -f $PIDFILE
+        return $RETVAL
+}
+
