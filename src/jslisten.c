@@ -54,7 +54,7 @@
 #define MYPROGNAME "jslisten"
 #define myConfFile "/.jslisten"
 #define myGlConfFile "/etc/jslisten.cfg"
-#define MY_LOG_LEVEL LOG_NOTICE //LOG_DEBUG //LOG_NOTICE
+//#define MY_LOG_LEVEL LOG_NOTICE //LOG_DEBUG //LOG_NOTICE
 
 #define INI_BUFFERSIZE      512
 
@@ -70,7 +70,7 @@ long button3 = BUTTON_DEFINED_RANGE; // Default unassigned
 long button4 = BUTTON_DEFINED_RANGE; // Default unassigned
 int buttonActive = 0;
 char swFilename[100];
-
+int logLevel = LOG_NOTICE;
 
 //---------------------------------
 // Check if the button was assigned
@@ -492,7 +492,7 @@ void signal_callback_handler(int signum) {
 //---------------------------------------------
 // main function
 //---------------------------------------------
-int main(void) {
+int main(int argc, char* argv[]) {
   int rc;
   // Register signal and signal handler
   signal(SIGINT, signal_callback_handler);
@@ -500,8 +500,15 @@ int main(void) {
   signal(SIGTERM, signal_callback_handler);
   signal(SIGHUP, signal_callback_handler);
 
+  // Parse parameters to set debug level
+  if ( argc > 1 ) {
+    if (strncmp(argv[1], "--debug", 7) == 0) {
+      logLevel = LOG_DEBUG; 
+    }
+  } 
+
   // Open Syslog
-  setlogmask (LOG_UPTO (MY_LOG_LEVEL));
+  setlogmask (LOG_UPTO (logLevel));
   openlog (MYPROGNAME, LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
   syslog(LOG_NOTICE, "Listen to joystick inputs ...\n");
 
