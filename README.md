@@ -30,6 +30,8 @@ After searching the internet, I found nothing really interesting. Kodi addon wil
 Following example for Raspbian. Should work for many other distributions almost the same way.
  * Use the precompiled binary in bin/ or run "# make" to create the binary
  * Place the binary to "/opt/bin" (if you change the folder, please update your init script) 
+ * Copy the configuration script to /etc/jslisten.cfg
+ * Modify the configuration script to your needs
  * Copy the service script "utils/jslisten.service" to "/etc/systemd/system"
  * Update the systemd daemon: "# systemctl daemon-reload"
  * Start the daemon "# systemctl start jslisten.service"
