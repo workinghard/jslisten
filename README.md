@@ -5,7 +5,7 @@
  2. [Usage](#usage)
  3. [Installation](#installation)
  4. [Configuration](#configuration)
- 5. [Known limitations](#known_limitations)
+ 5. [Known limitations](#known limitations)
 
 ## Overview
 
