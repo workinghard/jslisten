@@ -3,9 +3,9 @@
 ## Index
  1. [Overview](#overview)
  2. [Usage](#usage)
- 3. [Installation](##installation)
- 4. [Configuration](##configuration)
- 5. [Known limitations](##known_limitations)
+ 3. [Installation](#installation)
+ 4. [Configuration](#configuration)
+ 5. [Known limitations](#known_limitations)
 
 ## Overview
 
