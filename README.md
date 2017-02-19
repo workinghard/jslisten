@@ -6,6 +6,7 @@
  3. [Installation](#installation)
  4. [Configuration](#configuration)
  5. [Known limitations](#known-limitations)
+ 6. [Multiple key combinations](#multiple-key-combinations)
 
 ## Overview
 
@@ -62,4 +63,22 @@ button4=
  * Kodi and X11 are blocking /dev/input/* events. For X11 you can add an exception in /usr/share/X11/xorg.conf.d/10-quirks.conf but Kodi is ... nasty ... As long as they don't implement a nice 
 unified unput support, my workaround is to revoke the kodi group rights to the input devices. :(
  * If you experience any issues, feel free to use '--debug' option
+
+## Multiple key combinations
+You can have different key sets to run different programs:
+```
+[Generic]
+program="/opt/bin/modeSwitcher.sh"
+button1=10
+button2=11
+button3=0
+button4=
+
+[Fun]
+program="/opt/bin/haveFun.sh"
+button1=0
+button2=3
+button3=
+button4=
+```
 
