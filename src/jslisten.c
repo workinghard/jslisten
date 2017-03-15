@@ -89,7 +89,11 @@ int buttonDefined(int val) {
 int getConfigFile() {
   int rc=1; // Default nothing found
   // Determine home dir
-  strcat(strcpy(iniFile, getenv("HOME")), myConfFile);
+  char *homeEnv = getenv("HOME");
+  int strLength = strlen(homeEnv);
+  if (strLength > 0 ) {
+    strcat(strncpy(iniFile, homeEnv, strLength), myConfFile);
+  }
 
   // Look for personal file
   if( access( iniFile, R_OK ) != -1 ) {
