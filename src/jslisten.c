@@ -103,18 +103,17 @@ int buttonDefined(int val) {
 int getConfigFile() {
   int rc=1; // Default nothing found
   // Determine home dir
-  char *homeEnv = getenv("HOME");
-  int strLength = strlen(homeEnv);
-  if (strLength > 0 ) {
-    strcat(strncpy(iniFile, homeEnv, strLength), myConfFile);
+  if ( getenv("HOME") != NULL ) {
+    syslog(LOG_INFO, "taking user config %s\n", iniFile);
+    strcat(strcpy(iniFile, getenv("HOME")), myConfFile);
+    // Look for personal file
+    if( access( iniFile, R_OK ) != -1 ) {
+      // file exists
+      rc = 0;
+      syslog(LOG_INFO, "reading config %s\n", iniFile); 
+    }
   }
-
-  // Look for personal file
-  if( access( iniFile, R_OK ) != -1 ) {
-    // file exists
-    rc = 0;
-    syslog(LOG_INFO, "reading config %s\n", iniFile); 
-  }else{
+  if ( rc > 0 ) {
     // file doesn't exist, check global
     if( access( myGlConfFile, R_OK ) != -1 ) {
       strcpy(iniFile, myGlConfFile);
