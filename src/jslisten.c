@@ -102,9 +102,21 @@ int buttonDefined(int val) {
 //---------------------------------
 int getConfigFile() {
   int rc=1; // Default nothing found
+  char *fname;
+
   // Determine home dir
-  if ( getenv("HOME") != NULL ) {
-    syslog(LOG_INFO, "taking user config %s\n", iniFile);
+  if ( (fname = getenv("JSLISTEN_CONFIG")) != NULL ) {
+    syslog(LOG_INFO, "trying JSLISTEN_CONFIG %s\n", fname);
+    strcpy(iniFile, fname);
+
+    if ( access( iniFile, R_OK ) != -1) {
+      rc = 0;
+      syslog(LOG_INFO, "reading config %s\n", iniFile);
+    }
+  }
+
+  if ( rc == 1 && getenv("HOME") != NULL ) {
+    syslog(LOG_INFO, "trying user config %s\n", iniFile);
     strcat(strcpy(iniFile, getenv("HOME")), myConfFile);
     // Look for personal file
     if( access( iniFile, R_OK ) != -1 ) {
