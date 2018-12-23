@@ -25,6 +25,9 @@ In my configuration Kodi runs as default. Media center is still the primary usag
 
 After searching the internet, I found nothing really interesting. Kodi addon will not work because gamepad support is still missing. EmulationStation addon might work but than ... Kodi solution will be missing. So I had to go one level up to the OS. But even here I found nothing really easy to setup or working. So I decided to write this program. It runs as a daemon in the background and listening in nonblocking mode to /dev/input/js* devices. To make it hotplug capable, it's monitoring the udev signals if no device is present.
 
+Update 22/12/2018:
+If you have many different /dev/inputs, you can pass it as an arguement at the startup:
+'''jslisten --device /dev/input/myinput/js0'''
 
 ## Installation
 
@@ -59,7 +62,6 @@ button4=
 
 ## Known limitations
 
- * If you have many different /dev/inputs, you might need to adjust this program to search for special one.
  * Kodi and X11 are blocking /dev/input/* events. For X11 you can add an exception in /usr/share/X11/xorg.conf.d/10-quirks.conf but Kodi is ... nasty ... As long as they don't implement a nice 
 unified unput support, my workaround is to revoke the kodi group rights to the input devices. :(
  * If you experience any issues, feel free to use '--debug' option
