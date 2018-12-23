@@ -64,6 +64,7 @@
 // Global definitions
 //---------------------------------
 char iniFile[INI_BUFFERSIZE];
+char myDevPath[NAME_LENGTH];
 int joyFD;
 struct KeySet{
   // Set Default unassigned
@@ -391,7 +392,7 @@ void listenJoy (void) {
               sysPath = udev_device_get_syspath(mydev);
               devPath = udev_device_get_devnode(mydev);
 
-              if (sysPath != NULL && devPath != NULL && strstr(sysPath, "/js") != 0) {
+              if (sysPath != NULL && devPath != NULL && strstr(sysPath, myDevPath) != 0) {
 	        syslog(LOG_NOTICE, "Found Device: %s\n", devPath);
                 if ((joyFD = open(devPath, O_RDONLY)) < 0) { // Open the file descriptor
                   syslog(LOG_INFO, "error: failed to open fd\n");
@@ -566,10 +567,15 @@ int main(int argc, char* argv[]) {
     myKeys[i].isTriggered = false;
   }
 
+  // Default device path to check
+  strcpy(myDevPath, "/js");
+
   // Parse parameters to set debug level
   if ( argc > 1 ) {
-    if (strncmp(argv[1], "--debug", 7) == 0) {
-      logLevel = LOG_DEBUG; 
+    for (int i=1;i<argc;i++) {
+      if (strncmp(argv[i], "--debug", 7) == 0) {
+        logLevel = LOG_DEBUG; 
+      }
     }
   } 
 
@@ -578,6 +584,21 @@ int main(int argc, char* argv[]) {
   openlog (MYPROGNAME, LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
   syslog(LOG_NOTICE, "Listen to joystick inputs ...\n");
 
+  // Parse parameters to set device path
+  if ( argc > 1 ) {
+    for (int i=1;i<argc;i++) {
+      if (strncmp(argv[i], "--device", 8) == 0) {
+        if ( argc > i+1 ) {
+          if ( strlen(argv[i+1]) < NAME_LENGTH ){
+            strcpy(myDevPath, argv[i+1]);
+	    syslog(LOG_NOTICE, "Using device path %s\n", myDevPath);
+          }
+        }else{
+          syslog(LOG_NOTICE, "Missing device path parameter\n"); 
+	}
+      }
+    }
+  } 
   // Get the configuration file
   rc = getConfigFile();
   if ( rc > 0 ) {
