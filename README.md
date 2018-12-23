@@ -27,7 +27,8 @@ After searching the internet, I found nothing really interesting. Kodi addon wil
 
 Update 22/12/2018:
 If you have many different /dev/inputs, you can pass it as an arguement at the startup:
-'''jslisten --device /dev/input/myinput/js0'''
+
+```jslisten --device /dev/input/myinput/js0```
 
 ## Installation
 
