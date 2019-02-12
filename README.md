@@ -25,10 +25,15 @@ In my configuration Kodi runs as default. Media center is still the primary usag
 
 After searching the internet, I found nothing really interesting. Kodi addon will not work because gamepad support is still missing. EmulationStation addon might work but than ... Kodi solution will be missing. So I had to go one level up to the OS. But even here I found nothing really easy to setup or working. So I decided to write this program. It runs as a daemon in the background and listening in nonblocking mode to /dev/input/js* devices. To make it hotplug capable, it's monitoring the udev signals if no device is present.
 
-<b>Update 22/12/2018:</b>
+<b>Update 12/22/2018:</b>
 If you have many different /dev/inputs, you can pass it as an arguement at the startup:
 
 ```jslisten --device /dev/input/myinput/js0```
+
+<b>Update 02/12/2019:</b>
+Changed the default service user to "pi" in jslisten.service
+
+Use user root only if it's really required.
 
 ## Installation
 
