@@ -9,7 +9,7 @@ ExecReload=/bin/kill -9 $MAINPID
 ExecStop=/bin/kill -9 $MAINPID
 KillMode=process
 Restart=on-failure
-User=root
+User=pi
 
 [Install]
 WantedBy=multi-user.target

@@ -106,18 +106,18 @@ int getConfigFile() {
   // Determine home dir
   if ( getenv("HOME") != NULL ) {
     syslog(LOG_INFO, "taking user config %s\n", iniFile);
-    strcat(strcpy(iniFile, getenv("HOME")), myConfFile);
+    strncat(strncpy(iniFile, getenv("HOME"), INI_BUFFERSIZE-1), myConfFile, INI_BUFFERSIZE-1);
     // Look for personal file
     if( access( iniFile, R_OK ) != -1 ) {
       // file exists
       rc = 0;
-      syslog(LOG_INFO, "reading config %s\n", iniFile); 
+      syslog(LOG_INFO, "reading config %s\n", iniFile);
     }
   }
   if ( rc > 0 ) {
     // file doesn't exist, check global
     if( access( myGlConfFile, R_OK ) != -1 ) {
-      strcpy(iniFile, myGlConfFile);
+      strncpy(iniFile, myGlConfFile, INI_BUFFERSIZE-1);
       rc = 0;
       syslog(LOG_INFO, "reading config %s\n", iniFile);
     }else{
@@ -568,16 +568,16 @@ int main(int argc, char* argv[]) {
   }
 
   // Default device path to check
-  strcpy(myDevPath, "/js");
+  strncpy(myDevPath, "/js", NAME_LENGTH-1);
 
   // Parse parameters to set debug level
   if ( argc > 1 ) {
     for (int i=1;i<argc;i++) {
       if (strncmp(argv[i], "--debug", 7) == 0) {
-        logLevel = LOG_DEBUG; 
+        logLevel = LOG_DEBUG;
       }
     }
-  } 
+  }
 
   // Open Syslog
   setlogmask (LOG_UPTO (logLevel));
@@ -590,15 +590,15 @@ int main(int argc, char* argv[]) {
       if (strncmp(argv[i], "--device", 8) == 0) {
         if ( argc > i+1 ) {
           if ( strlen(argv[i+1]) < NAME_LENGTH ){
-            strcpy(myDevPath, argv[i+1]);
+            strncpy(myDevPath, argv[i+1], NAME_LENGTH-1);
 	    syslog(LOG_NOTICE, "Using device path %s\n", myDevPath);
           }
         }else{
-          syslog(LOG_NOTICE, "Missing device path parameter\n"); 
+          syslog(LOG_NOTICE, "Missing device path parameter. Using default %s\n", myDevPath);
 	}
       }
     }
-  } 
+  }
   // Get the configuration file
   rc = getConfigFile();
   if ( rc > 0 ) {
