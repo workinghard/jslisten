@@ -3,7 +3,7 @@
  *
  *  Created by Nikolai Rinas on 27.03.15.
  *  Copyright (c) 2015 Nikolai Rinas. All rights reserved.
- * 
+ *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
@@ -13,8 +13,8 @@
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
-  
- *   You should have received a copy of the GNU General Public License
+ *
+ *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
@@ -66,7 +66,7 @@
 char iniFile[INI_BUFFERSIZE];
 char myDevPath[NAME_LENGTH];
 int joyFD;
-struct KeySet{
+struct KeySet {
   // Set Default unassigned
   long button1;
   int button1Active;
@@ -93,7 +93,7 @@ int logLevel = LOG_NOTICE;
 int buttonDefined(int val) {
   if ( val > BUTTON_DEFINED_RANGE ) {
     return true;
-  }else{
+  } else {
     return false;
   }
 }
@@ -120,12 +120,12 @@ int getConfigFile() {
       strncpy(iniFile, myGlConfFile, INI_BUFFERSIZE-1);
       rc = 0;
       syslog(LOG_INFO, "reading config %s\n", iniFile);
-    }else{
+    } else {
       // Write a default file to the home dir
       FILE *f = fopen(iniFile, "w");
       if (f == NULL) {
         syslog(LOG_ERR, "err: failed write config file %s\n", myConfFile);
-      }else{
+      } else {
         const char *defaultConfig = "[Generic]\nprogram=\nbutton1=\nbutton2=\nbutton3=\nbutton4=\n";
         fprintf(f, "%s\n", defaultConfig);
         syslog(LOG_ERR, "err: no config found. Please maintain all required values in %s\n", iniFile);
@@ -153,40 +153,40 @@ void readConfig(void) {
           n = ini_gets(section, str, "dummy", myKeys[numHotkeys].swFilename, sizearray(myKeys[numHotkeys].swFilename), iniFile);
           if ( n > 5 && strncmp("dummy", myKeys[numHotkeys].swFilename, 5) != 0 ) { // Value is not empty
             syslog(LOG_INFO, "Filename: %s\n", myKeys[numHotkeys].swFilename);
-          } 
-        }  
+          }
+        }
         if ( strncmp("button1", str, 7) == 0 ) { // Key found
           l = ini_getl(section, str, BUTTON_DEFINED_RANGE, iniFile);
           if ( buttonDefined(l) == true ) { // Value is not empty
             syslog(LOG_INFO, "button1: %ld\n", l);
             myKeys[numHotkeys].button1 = l;
             myKeys[numHotkeys].activeButtons++;
-          } 
-        }  
+          }
+        }
         if ( strncmp("button2", str, 7) == 0 ) { // Key found
           l = ini_getl(section, str, BUTTON_DEFINED_RANGE, iniFile);
           if ( buttonDefined(l) == true ) { // Value is not empty
             syslog(LOG_INFO, "button2: %ld\n", l);
             myKeys[numHotkeys].button2 = l;
             myKeys[numHotkeys].activeButtons++;
-          } 
-        }  
+          }
+        }
         if ( strncmp("button3", str, 7) == 0 ) { // Key found
           l = ini_getl(section, str, BUTTON_DEFINED_RANGE, iniFile);
           if ( buttonDefined(l) == true ) { // Value is not empty
             syslog(LOG_INFO, "button3: %ld\n", l);
             myKeys[numHotkeys].button3 = l;
             myKeys[numHotkeys].activeButtons++;
-          } 
-        }  
+          }
+        }
         if ( strncmp("button4", str, 7) == 0 ) { // Key found
           l = ini_getl(section, str, BUTTON_DEFINED_RANGE, iniFile);
-          if ( buttonDefined(l) == true ){ // Value is not empty
+          if ( buttonDefined(l) == true ) { // Value is not empty
             syslog(LOG_INFO, "button4: %ld\n", l);
             myKeys[numHotkeys].button4 = l;
             myKeys[numHotkeys].activeButtons++;
-          } 
-        }  
+          }
+        }
       } /* for */
     }
     numHotkeys++; // Remember how many sections we have
@@ -199,19 +199,19 @@ void readConfig(void) {
 int checkConfig(void) {
   int rc=0;
   int i;
-  for (i=0;i<numHotkeys;i++){
+  for (i=0; i<numHotkeys; i++) {
     if ( sizearray(myKeys[i].swFilename) < 3 ) { // no program make no sense
       syslog(LOG_ERR, "err: no valid filename provided in section %d. Please check ini file\n", i);
       rc = 1;
     }
     if ( buttonDefined(myKeys[i].button1) == false ) { // we need at least one button for tracking
       syslog(LOG_ERR, "err: button assignment missing in section %d. Please set at least button1 in the ini file!\n", i);
-      rc = 1; 
+      rc = 1;
     }
     syslog(LOG_INFO, "Active assigned buttons in section %d: ", i);
     syslog(LOG_INFO, "%d\n", myKeys[i].activeButtons);
-  
-  }  
+
+  }
   return rc;
 }
 
@@ -222,7 +222,7 @@ int checkButtonPressed(struct js_event js) {
   int section = -1;
   int i;
   // Update the button press in all key combinations
-  for (i=0;i<numHotkeys;i++){
+  for (i=0; i<numHotkeys; i++) {
     if ( js.number == myKeys[i].button1 ) {
       myKeys[i].button1Active = js.value;
     }
@@ -237,26 +237,26 @@ int checkButtonPressed(struct js_event js) {
     }
   }
   // Analyse combinations
-  for (i=0; i<numHotkeys;i++){
+  for (i=0; i<numHotkeys; i++) {
     switch (myKeys[i].activeButtons) {
-      case 1:
-        if ( myKeys[i].button1Active == 1 ) { myKeys[i].isTriggered = 1; section = i; }
-        break;
-      case 2:
-        if ( myKeys[i].button1Active == 1 && myKeys[i].button2Active == 1 ) { 
-          myKeys[i].isTriggered = 1; section = i; 
-        }
-        break;
-      case 3:
-        if ( myKeys[i].button1Active == 1 && myKeys[i].button2Active == 1 && myKeys[i].button3Active == 1 ) { 
-          myKeys[i].isTriggered = 1; section = i;
-        }
-        break;
-      case 4:
-        if ( myKeys[i].button1Active == 1 && myKeys[i].button2Active == 1 && myKeys[i].button3Active == 1 && myKeys[i].button4Active == 1) { 
-          myKeys[i].isTriggered = 1; section = i;
-        }
-        break;
+    case 1:
+      if ( myKeys[i].button1Active == 1 ) { myKeys[i].isTriggered = 1; section = i; }
+      break;
+    case 2:
+      if ( myKeys[i].button1Active == 1 && myKeys[i].button2Active == 1 ) {
+        myKeys[i].isTriggered = 1; section = i;
+      }
+      break;
+    case 3:
+      if ( myKeys[i].button1Active == 1 && myKeys[i].button2Active == 1 && myKeys[i].button3Active == 1 ) {
+        myKeys[i].isTriggered = 1; section = i;
+      }
+      break;
+    case 4:
+      if ( myKeys[i].button1Active == 1 && myKeys[i].button2Active == 1 && myKeys[i].button3Active == 1 && myKeys[i].button4Active == 1) {
+        myKeys[i].isTriggered = 1; section = i;
+      }
+      break;
     }
   }
   return section;
@@ -267,7 +267,7 @@ int checkButtonPressed(struct js_event js) {
 //---------------------------------------------
 void resetHotkeys(){
   int i;
-  for (i=0;i<numHotkeys;i++){
+  for (i=0; i<numHotkeys; i++) {
     myKeys[i].button1Active = 0;
     myKeys[i].button2Active = 0;
     myKeys[i].button3Active = 0;
@@ -291,7 +291,7 @@ void listenJoy (void) {
   struct udev_list_entry *devices, *dev_list_entry;
 
   joyFD = -1;  // Clear previous joystick
-	
+
   /* Create the udev object */
   udev = udev_new();
   if (!udev) {
@@ -311,19 +311,19 @@ void listenJoy (void) {
     const char* name;
     const char* sysPath;
     const char* devPath;
-    
+
     name = udev_list_entry_get_name(dev_list_entry);
     mydev = udev_device_new_from_syspath(udev, name);
     sysPath = udev_device_get_syspath(mydev);
     devPath = udev_device_get_devnode(mydev);
- 
+
     if (sysPath != NULL && devPath != NULL && strstr(sysPath, "/js") != 0) {
       syslog (LOG_NOTICE, "Found Device: %s\n", devPath);
       if ((joyFD = open(devPath, O_RDONLY)) < 0) { // Open the file descriptor
         syslog (LOG_INFO, "error: failed to open fd\n");
       }
     }
-   
+
     udev_device_unref(mydev);
   }
   /* cleanup */
@@ -338,8 +338,8 @@ void listenJoy (void) {
     /* Get the file descriptor (fd) for the monitor.
        This fd will get passed to select() */
     fd = udev_monitor_get_fd(mon);
-	
-	
+
+
     /* This section will run continuously, calling usleep() at
        the end of each pass. This is to demonstrate how to use
        a udev_monitor in a non-blocking way. */
@@ -352,18 +352,18 @@ void listenJoy (void) {
       fd_set fds;
       struct timeval tv;
       int ret;
-		
+
       FD_ZERO(&fds);
       FD_SET(fd, &fds);
       tv.tv_sec = 0;
       tv.tv_usec = 0;
-		
+
       ret = select(fd+1, &fds, NULL, NULL, &tv);
-		
+
       /* Check if our file descriptor has received data. */
       if (ret > 0 && FD_ISSET(fd, &fds)) {
         syslog(LOG_DEBUG,"\nselect() says there should be data\n");
-			
+
         /* Make the call to receive the device.
            select() ensured that this will not block. */
         dev = udev_monitor_receive_device(mon);
@@ -383,37 +383,37 @@ void listenJoy (void) {
             devices = udev_enumerate_get_list_entry(enumerate);
 
             udev_list_entry_foreach(dev_list_entry, devices) {
-  	      const char* name;
+              const char* name;
               const char* sysPath;
               const char* devPath;
- 
+
               name = udev_list_entry_get_name(dev_list_entry);
               mydev = udev_device_new_from_syspath(udev, name);
               sysPath = udev_device_get_syspath(mydev);
               devPath = udev_device_get_devnode(mydev);
 
               if (sysPath != NULL && devPath != NULL && strstr(sysPath, myDevPath) != 0) {
-	        syslog(LOG_NOTICE, "Found Device: %s\n", devPath);
+                syslog(LOG_NOTICE, "Found Device: %s\n", devPath);
                 if ((joyFD = open(devPath, O_RDONLY)) < 0) { // Open the file descriptor
                   syslog(LOG_INFO, "error: failed to open fd\n");
                 }
               }
 
               udev_device_unref(mydev);
- 	    }
+            }
             /* cleanup */
             udev_enumerate_unref(enumerate);
-          }else{
+          } else {
             if ( strncmp(udev_device_get_action(dev), "remove", 6) == 0 ) { // Device remove
               if ( joyFD >= 0 ) {
-                 close(joyFD);
+                close(joyFD);
               }
-              joyFD = -1; // Reset 
+              joyFD = -1; // Reset
             }
           }
-        }else{
+        } else {
           syslog(LOG_WARNING, "No Device from receive_device(). An error occured.\n");
-        }					
+        }
         udev_device_unref(dev);
       }
       usleep(250*1000);
@@ -427,15 +427,14 @@ void listenJoy (void) {
 }
 
 //---------------------------------------------
-// Listen on the input and call the program 
+// Listen on the input and call the program
 //---------------------------------------------
 int bindJoy(void) {
 
   char *axis_names[ABS_MAX + 1] = { "X", "Y", "Z", "Rx", "Ry", "Rz", "Throttle", "Rudder",
-    "Wheel", "Gas", "Brake", "?", "?", "?", "?", "?",
-    "Hat0X", "Hat0Y", "Hat1X", "Hat1Y", "Hat2X", "Hat2Y", "Hat3X", "Hat3Y",
-    "?", "?", "?", "?", "?", "?", "?",
-  };
+                                    "Wheel", "Gas", "Brake", "?", "?", "?", "?", "?",
+                                    "Hat0X", "Hat0Y", "Hat1X", "Hat1Y", "Hat2X", "Hat2Y", "Hat3X", "Hat3Y",
+                                    "?", "?", "?", "?", "?", "?", "?",};
 
   char *button_names[KEY_MAX - BTN_MISC + 1] = {
     "Btn0", "Btn1", "Btn2", "Btn3", "Btn4", "Btn5", "Btn6", "Btn7", "Btn8", "Btn9", "?", "?", "?", "?", "?", "?",
@@ -464,7 +463,7 @@ int bindJoy(void) {
   getbtnmap(joyFD, btnmap);
 
   syslog(LOG_INFO, "Driver version is %d.%d.%d.\n",
-          version >> 16, (version >> 8) & 0xff, version & 0xff);
+         version >> 16, (version >> 8) & 0xff, version & 0xff);
 
   /* Determine whether the button map is usable. */
   for (i = 0; btnmapok && i < buttons; i++) {
@@ -500,7 +499,7 @@ int bindJoy(void) {
   while (1) {
     while (read(joyFD, &js, sizeof(struct js_event)) == sizeof(struct js_event))  {
       syslog(LOG_DEBUG, "Event: type %d, time %d, number %d, value %d\n",
-              js.type, js.time, js.number, js.value);
+             js.type, js.time, js.number, js.value);
       needTrigger = checkButtonPressed(js);
       if ( needTrigger > -1 ) { // We have found one key section
         syslog(LOG_INFO, "Swtching mode. ...\n");
@@ -508,7 +507,7 @@ int bindJoy(void) {
         int rc = system(myKeys[needTrigger].swFilename);
         if ( rc == 0 ) {
           syslog(LOG_INFO, "Call succesfull\n");
-        }else{
+        } else {
           syslog(LOG_INFO, "Call failed\n");
         }
         // reset state, so we call only once
@@ -530,13 +529,13 @@ int bindJoy(void) {
 // Exit function
 //---------------------------------------------
 void signal_callback_handler(int signum) {
-   syslog(LOG_NOTICE, "Exit. Caught signal %d\n",signum);
-   // Cleanup and close up stuff here
+  syslog(LOG_NOTICE, "Exit. Caught signal %d\n",signum);
+  // Cleanup and close up stuff here
 
-   closelog();
+  closelog();
 
-   // Terminate program
-   exit(0);
+  // Terminate program
+  exit(0);
 }
 
 
@@ -554,7 +553,7 @@ int main(int argc, char* argv[]) {
 
   // Init Defaults
   int i;
-  for (i=0;i<MAX_HOTKEYS;i++) {
+  for (i=0; i<MAX_HOTKEYS; i++) {
     myKeys[i].button1 = BUTTON_DEFINED_RANGE;
     myKeys[i].button1Active = 0;
     myKeys[i].button2 = BUTTON_DEFINED_RANGE;
@@ -572,7 +571,7 @@ int main(int argc, char* argv[]) {
 
   // Parse parameters to set debug level
   if ( argc > 1 ) {
-    for (int i=1;i<argc;i++) {
+    for (int i=1; i<argc; i++) {
       if (strncmp(argv[i], "--debug", 7) == 0) {
         logLevel = LOG_DEBUG;
       }
@@ -586,16 +585,16 @@ int main(int argc, char* argv[]) {
 
   // Parse parameters to set device path
   if ( argc > 1 ) {
-    for (int i=1;i<argc;i++) {
+    for (int i=1; i<argc; i++) {
       if (strncmp(argv[i], "--device", 8) == 0) {
         if ( argc > i+1 ) {
-          if ( strlen(argv[i+1]) < NAME_LENGTH ){
+          if ( strlen(argv[i+1]) < NAME_LENGTH ) {
             strncpy(myDevPath, argv[i+1], NAME_LENGTH-1);
-	    syslog(LOG_NOTICE, "Using device path %s\n", myDevPath);
+            syslog(LOG_NOTICE, "Using device path %s\n", myDevPath);
           }
-        }else{
+        } else {
           syslog(LOG_NOTICE, "Missing device path parameter. Using default %s\n", myDevPath);
-	}
+        }
       }
     }
   }
@@ -613,13 +612,13 @@ int main(int argc, char* argv[]) {
   if ( rc > 0 ) {
     return rc;
   }
-  
+
   // If everything is set up, run ...
   if ( rc == 0 ) {
     // Main endless loop
     while (1) {
       listenJoy(); // Find our joystick
-      if ( joyFD > 0 ) { 
+      if ( joyFD > 0 ) {
         bindJoy(); // If found, use it and listen to the keys
       }
     }
