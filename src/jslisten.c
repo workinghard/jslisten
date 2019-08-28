@@ -18,28 +18,29 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
+#include <errno.h>
+#include <fcntl.h>
+#include <getopt.h>
 #include <libudev.h>
+#include <locale.h>
+#include <pwd.h>
+#include <signal.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <locale.h>
-#include <unistd.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
 #include <sys/types.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <string.h>
-#include <stdint.h>
-#include <signal.h>
 #include <syslog.h>
-#include <pwd.h>
+#include <unistd.h>
 
 #include <linux/input.h>
 #include <linux/joystick.h>
 
 #include <assert.h>
-#include "minIni.h"
 
+#include "minIni.h"
 #include "axbtnmap.h"
 
 //---------------------------------
@@ -85,7 +86,27 @@ struct KeySet myKeys[MAX_HOTKEYS];
 
 int numHotkeys = 0;
 //int buttonActive = 0;
-int logLevel = LOG_NOTICE;
+int logLevel = LOG_INFO;
+
+// recognized values for --loglevel
+#define LVL_DEBUG_STR "debug"
+#define LVL_NOTICE_STR  "notice"
+
+// recognized values for --mode
+#define MODE_PLAIN_STR "plain"
+#define MODE_HOLD_STR  "hold"
+
+static struct option long_options[] = {
+  {"device", required_argument, 0, 'd'},
+  {"help", no_argument, NULL, 'h'},
+  {"loglevel", required_argument, 0, 'l'},
+  {"mode", required_argument, 0, 'm'},
+  {0, 0, 0, 0}
+};
+
+typedef enum {PLAIN, HOLD} mode_type;
+mode_type mode = PLAIN;
+
 
 //---------------------------------
 // Check if the button was assigned
@@ -198,8 +219,7 @@ void readConfig(void) {
 //---------------------------------------------
 int checkConfig(void) {
   int rc=0;
-  int i;
-  for (i=0; i<numHotkeys; i++) {
+  for (int i=0; i<numHotkeys; i++) {
     if ( sizearray(myKeys[i].swFilename) < 3 ) { // no program make no sense
       syslog(LOG_ERR, "err: no valid filename provided in section %d. Please check ini file\n", i);
       rc = 1;
@@ -225,17 +245,15 @@ int checkButtonPressed(struct js_event js) {
   for (i=0; i<numHotkeys; i++) {
     if ( js.number == myKeys[i].button1 ) {
       myKeys[i].button1Active = js.value;
-    }
-    if ( js.number == myKeys[i].button2 ) {
+    } else if ( js.number == myKeys[i].button2 ) {
       myKeys[i].button2Active = js.value;
-    }
-    if ( js.number == myKeys[i].button3 ) {
+    } else if ( js.number == myKeys[i].button3 ) {
       myKeys[i].button3Active = js.value;
-    }
-    if ( js.number == myKeys[i].button4 ) {
+    } else if ( js.number == myKeys[i].button4 ) {
       myKeys[i].button4Active = js.value;
     }
   }
+
   // Analyse combinations
   for (i=0; i<numHotkeys; i++) {
     switch (myKeys[i].activeButtons) {
@@ -265,9 +283,8 @@ int checkButtonPressed(struct js_event js) {
 //---------------------------------------------
 // Reset the keys
 //---------------------------------------------
-void resetHotkeys(){
-  int i;
-  for (i=0; i<numHotkeys; i++) {
+void resetHotkeys() {
+  for (int i=0; i<numHotkeys; i++) {
     myKeys[i].button1Active = 0;
     myKeys[i].button2Active = 0;
     myKeys[i].button3Active = 0;
@@ -427,6 +444,33 @@ void listenJoy (void) {
 }
 
 //---------------------------------------------
+// check if any of the n-1 buttons is released.
+//
+// only to be called when js.value is 0. if the release event relates to
+// one of the n-1 buttons the "engaged" level will be left.
+//
+// returns 1 if all but the last buttons are no longer pressed or
+//           if only one button is defined to trigger an action
+// returns 0 if any of the n-1 is still pressed
+//---------------------------------------------
+int button_held(int js_btn_number, int button_set_idx) {
+  int activeKeys = myKeys[button_set_idx].activeButtons - 1;
+  switch (activeKeys) {
+  case 1:
+    return js_btn_number == myKeys[button_set_idx].button1;
+  case 2:
+    return js_btn_number == myKeys[button_set_idx].button1
+           || js_btn_number == myKeys[button_set_idx].button2;
+  case 3:
+    return js_btn_number == myKeys[button_set_idx].button1
+           || js_btn_number == myKeys[button_set_idx].button2
+           || js_btn_number == myKeys[button_set_idx].button3;
+  default:
+    return 1;
+  }
+}
+
+//---------------------------------------------
 // Listen on the input and call the program
 //---------------------------------------------
 int bindJoy(void) {
@@ -494,29 +538,42 @@ int bindJoy(void) {
   // Non-blocking reading
   struct js_event js;
   int needTrigger;
+  int lastTriggeredSet = -1;
   fcntl(joyFD, F_SETFL, O_NONBLOCK);
 
   while (1) {
     while (read(joyFD, &js, sizeof(struct js_event)) == sizeof(struct js_event))  {
-      syslog(LOG_DEBUG, "Event: type %d, time %d, number %d, value %d\n",
-             js.type, js.time, js.number, js.value);
-      needTrigger = checkButtonPressed(js);
-      if ( needTrigger > -1 ) { // We have found one key section
-        syslog(LOG_INFO, "Swtching mode. ...\n");
-        // call external program
-        int rc = system(myKeys[needTrigger].swFilename);
-        if ( rc == 0 ) {
-          syslog(LOG_INFO, "Call succesfull\n");
-        } else {
-          syslog(LOG_INFO, "Call failed\n");
+      if (js.type == JS_EVENT_BUTTON) {
+        syslog(LOG_DEBUG, "Event: type %d, time %d, number %d, value %d\n",
+               js.type, js.time, js.number, js.value);
+        if (mode == HOLD && js.value == 0 && lastTriggeredSet > -1 && button_held(js.number, lastTriggeredSet)) {
+          resetHotkeys();
+          lastTriggeredSet = -1;
         }
-        // reset state, so we call only once
-        resetHotkeys();
+        needTrigger = checkButtonPressed(js);
+        if ( needTrigger > -1 ) {   // We have found one key section
+          if (mode == HOLD) {
+            // set to "engaged" mode (lastTriggeredSet > -1) and "fire" command once
+            lastTriggeredSet = needTrigger;
+          }
+          syslog(LOG_INFO, "Swtching mode. ...\n");
+          // call external program
+          int rc = system(myKeys[needTrigger].swFilename);
+          if ( rc == 0 ) {
+            syslog(LOG_INFO, "Call succesfull\n");
+          } else {
+            syslog(LOG_INFO, "Call failed\n");
+          }
+          if (mode == PLAIN) {
+            // reset state, so we call only once
+            resetHotkeys();
+          }
+        }
       }
     }
 
     if (errno != EAGAIN) {
-      syslog(LOG_DEBUG, "\njslistent: error reading"); // Regular exit if the joystick disconnect
+      syslog(LOG_DEBUG, "\njslisten: error reading"); // Regular exit if the joystick disconnect
       return 1;
     }
 
@@ -524,6 +581,7 @@ int bindJoy(void) {
   }
   return 0;
 }
+
 
 //---------------------------------------------
 // Exit function
@@ -539,21 +597,73 @@ void signal_callback_handler(int signum) {
 }
 
 
+void usage() {
+  printf("jslisten [<options>], where <options> are:\n");
+  printf("  --device <path>\t use explicit game controller path e.g. /dev/input/by-id/... instead of first one found.\n");
+  printf("  --loglevel <level>\t defines the minimum syslog log level. <level> is one of '%s' or '%s'. Defaults to 'info'.\n", LVL_DEBUG_STR, LVL_NOTICE_STR);
+  printf("  --mode <mode>\t\t defines the button trigger behaviour. <mode> is either '%s' or '%s'. Defaults to '%s'\n", MODE_PLAIN_STR, MODE_HOLD_STR, MODE_PLAIN_STR);
+  printf("  --help\t\t print this help and exit\n\n");
+  printf("For more information please visit: https://github.com/workinghard/jslisten\n");
+}
+
 //---------------------------------------------
-// main function
+// parse the command line parameters
 //---------------------------------------------
-int main(int argc, char* argv[]) {
-  int rc;
-  // Register signal and signal handler
-  signal(SIGINT, signal_callback_handler);
-  signal(SIGKILL, signal_callback_handler);
-  signal(SIGTERM, signal_callback_handler);
-  signal(SIGHUP, signal_callback_handler);
+void parse_command_line(int argc, char* argv[]) {
+  int c;
+  while (1) {
+    int option_index = 0;
+
+    c = getopt_long (argc, argv, "hl:d:m:", long_options, &option_index);
+
+    if (c == -1) {
+      break;
+    }
+
+    switch (c) {
+    case 'h':
+      usage();
+      exit(0);
+    case 'l':
+      if (strncmp(optarg, LVL_DEBUG_STR, strlen(LVL_DEBUG_STR)) == 0) {
+        logLevel = LOG_DEBUG;
+      } else if ((strncmp(optarg, LVL_NOTICE_STR, strlen(LVL_NOTICE_STR)) == 0)) {
+        logLevel = LOG_NOTICE;
+      }
+      break;
+    case 'd':
+      if (strlen(optarg) < NAME_LENGTH) {
+        strncpy(myDevPath, optarg, NAME_LENGTH-1);
+      } else {
+        syslog(LOG_WARNING, "--device <path> parameter too long. Using default.\n");
+      }
+      break;
+    case 'm':
+      if (strncmp(optarg, MODE_HOLD_STR, strlen(MODE_HOLD_STR)) == 0) {
+        mode = HOLD;
+      }
+      if (strncmp(optarg, MODE_PLAIN_STR, strlen(MODE_PLAIN_STR)) == 0) {
+        mode = PLAIN;
+      } else {
+        syslog(LOG_WARNING, "--mode %s parameter unknown. Using default.\n", optarg);
+
+      }
+      break;
+    case '?':
+      syslog(LOG_ERR, "Misconfigured command line parameters. Exiting. ...\n");
+      exit(1);
+    default:
+      abort ();
+    }
+  }
+}
 
 
-  // Init Defaults
-  int i;
-  for (i=0; i<MAX_HOTKEYS; i++) {
+//---------------------------------------------
+// init button keysets to defaults
+//---------------------------------------------
+void init_button_keysets() {
+  for (int i=0; i<MAX_HOTKEYS; i++) {
     myKeys[i].button1 = BUTTON_DEFINED_RANGE;
     myKeys[i].button1Active = 0;
     myKeys[i].button2 = BUTTON_DEFINED_RANGE;
@@ -565,39 +675,34 @@ int main(int argc, char* argv[]) {
     myKeys[i].activeButtons = 0;
     myKeys[i].isTriggered = false;
   }
+}
+
+//---------------------------------------------
+// main function
+//---------------------------------------------
+int main(int argc, char* argv[]) {
+  int rc;
+  // Register signal and signal handler
+  signal(SIGINT, signal_callback_handler);
+  signal(SIGKILL, signal_callback_handler);
+  signal(SIGTERM, signal_callback_handler);
+  signal(SIGHUP, signal_callback_handler);
 
   // Default device path to check
   strncpy(myDevPath, "/js", NAME_LENGTH-1);
 
-  // Parse parameters to set debug level
-  if ( argc > 1 ) {
-    for (int i=1; i<argc; i++) {
-      if (strncmp(argv[i], "--debug", 7) == 0) {
-        logLevel = LOG_DEBUG;
-      }
-    }
-  }
-
   // Open Syslog
-  setlogmask (LOG_UPTO (logLevel));
   openlog (MYPROGNAME, LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+
+  parse_command_line(argc, argv);
+
+  setlogmask (LOG_UPTO (logLevel));
+
+  syslog(LOG_NOTICE, "Using device path: %s\n", myDevPath);
+  syslog(LOG_NOTICE, "Using button mode: %s\n", mode == PLAIN ? MODE_PLAIN_STR : MODE_HOLD_STR);
+
   syslog(LOG_NOTICE, "Listen to joystick inputs ...\n");
 
-  // Parse parameters to set device path
-  if ( argc > 1 ) {
-    for (int i=1; i<argc; i++) {
-      if (strncmp(argv[i], "--device", 8) == 0) {
-        if ( argc > i+1 ) {
-          if ( strlen(argv[i+1]) < NAME_LENGTH ) {
-            strncpy(myDevPath, argv[i+1], NAME_LENGTH-1);
-            syslog(LOG_NOTICE, "Using device path %s\n", myDevPath);
-          }
-        } else {
-          syslog(LOG_NOTICE, "Missing device path parameter. Using default %s\n", myDevPath);
-        }
-      }
-    }
-  }
   // Get the configuration file
   rc = getConfigFile();
   if ( rc > 0 ) {
