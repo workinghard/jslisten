@@ -307,7 +307,8 @@ void listenJoy (void) {
   struct udev_enumerate *enumerate;
   struct udev_list_entry *devices, *dev_list_entry;
 
-  joyFD = -1;  // Clear previous joystick
+  // Clear previous joystick
+  joyFD = -1;  
 
   /* Create the udev object */
   udev = udev_new();
@@ -336,8 +337,13 @@ void listenJoy (void) {
 
     if (sysPath != NULL && devPath != NULL && strstr(sysPath, "/js") != 0) {
       syslog (LOG_NOTICE, "Found Device: %s\n", devPath);
-      if ((joyFD = open(devPath, O_RDONLY)) < 0) { // Open the file descriptor
-        syslog (LOG_INFO, "error: failed to open fd\n");
+      if (joyFD < 0 || strcmp(devPath, myDevPath) == 0) {
+        // Open the file descriptor
+        if ((joyFD = open(devPath, O_RDONLY)) < 0) { 
+          syslog (LOG_INFO, "error: failed to open fd\n");
+        } else {
+          syslog (LOG_NOTICE, "Watching: %s\n", devPath);
+        }
       }
     }
 
@@ -346,7 +352,9 @@ void listenJoy (void) {
   /* cleanup */
   udev_enumerate_unref(enumerate);
 
-  if ( joyFD < 0 ) { // Still no joystick found
+  // Still no joystick found
+  if ( joyFD < 0 ) { 
+    syslog (LOG_NOTICE, "No devices found\n");
 
     /* Set up a monitor to monitor input devices */
     mon = udev_monitor_new_from_netlink(udev, "udev");
