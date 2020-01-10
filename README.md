@@ -28,7 +28,9 @@ After searching the internet, I found nothing really interesting. Kodi addon wil
 <b>Update 12/22/2018:</b>
 If you have many different /dev/inputs, you can pass it as an arguement at the startup:
 
-```jslisten --device /dev/input/myinput/js0```
+```jslisten --device /dev/input/js0```
+
+** jslisten will also default to listen to the first device found if the defined device is not found.
 
 <b>Update 02/12/2019:</b>
 Changed the default service user to "pi" in jslisten.service
@@ -57,7 +59,7 @@ Also added `--help` for the command line for a brief summary of options.
 ## Installation
 
 Following example for Raspbian. Should work for many other distributions almost the same way.
- * Use the precompiled binary in bin/ or run "# make" to create the binary
+ * run "# make" to create the binary
  * Place the binary to "/opt/bin" (if you change the folder, please update your init script)
  * Copy the configuration script to /etc/jslisten.cfg
  * Modify the configuration script to your needs
