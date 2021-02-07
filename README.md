@@ -36,7 +36,7 @@ cd /tmp
 git clone git@github.com:workinghard/jslisten.git
 cd jslisten
 
-echo "Building jlisten binary"
+echo "Building jslisten binary"
 make
 
 echo "Moving jslisten binary to executable path"
@@ -47,7 +47,7 @@ echo "Copying default config; you will need to modify this file for your use cas
 cp /etc/jslisten.cfg ~/.jslisten
 
 echo "Adding jslisten support at boot"
-sudo cp utils/jslisten.service" /etc/systemd/system
+sudo cp utils/jslisten.service /etc/systemd/system
 sudo systemctl daemon-reload
 sudo systemctl start jslisten.service
 sudo systemctl enable jslisten
