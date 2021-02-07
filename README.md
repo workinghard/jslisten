@@ -61,38 +61,38 @@ Following example for Raspbian. Should work for many other distributions almost 
 
 #### Setting up the service
 
-    * run `make` to create the binary
-    * Place the binary in `/opt/bin`
-        - If you change the folder, please update the init script
-    * Copy the configuration script `cp etc/jslisten.cfg /etc/jslisten.cfg`
-        - This can either live in `/etc/jslisten.cfg` or as `~/.jslisten`
-    * Modify the configuration script to your needs
-        - See configuration walkthrough below
+- run `make` to create the binary
+- Place the binary in `/opt/bin`
+    - If you change the folder, please update the init script
+- Copy the configuration script `cp etc/jslisten.cfg /etc/jslisten.cfg`
+    - This can either live in `/etc/jslisten.cfg` or as `~/.jslisten`
+- Modify the configuration script to your needs
+    - See configuration walkthrough below
 
 #### Testing
-    * At this point you should have a runable version of `jslisten` that is configured for your use case.
-    * you can test it by running `jslisten --device /dev/input/js[*]`
-        - where `[*]` is your deviceID (ie `/dev/input/js0`)
-    * Once you get it running manually, you can set it to start at boot
+- At this point you should have a runable version of `jslisten` that is configured for your use case.
+- you can test it by running `jslisten --device /dev/input/js[*]`
+    - where `[*]` is your deviceID (ie `/dev/input/js0`)
+- Once you get it running manually, you can set it to start at boot
 
 #### Start at boot
-    * Copy the service script `sudo cp utils/jslisten.service /etc/systemd/system`
-        - make any changes to the `ExecStart` to change joystick devices (defaults to `/dev/input/js0`)
-    * Update the systemd daemon `sudo systemctl daemon-reload`
-    * Make it start at boot `sudo systemctl enable jslisten`
-    * You can start and stop the service via
-        - Start: `sudo systemctl start jslisten.service`
-        - Stop: `sudo systemctl stop jslisten.service`
-        - Status: `sudo systemctl status jslisten.service`
+- Copy the service script `sudo cp utils/jslisten.service /etc/systemd/system`
+    - make any changes to the `ExecStart` to change joystick devices (defaults to `/dev/input/js0`)
+- Update the systemd daemon `sudo systemctl daemon-reload`
+- Make it start at boot `sudo systemctl enable jslisten`
+- You can start and stop the service via
+    - Start: `sudo systemctl start jslisten.service`
+    - Stop: `sudo systemctl stop jslisten.service`
+    - Status: `sudo systemctl status jslisten.service`
 
 ## Configuration
 
-    * I assume your joystick setup is already done and you can see activation with `jstest /dev/input/js0`
-        - There are many tutorials out there and you should not proceed if this doesn't work for you!
-    * Think which button combination will work for your gamepad. You can configure up to 4 button combination. In my case i picked `Left Shoulder` + `Right Shoulder` + `SELECT`. I'm pretty sure I will not need to press this buttons at the same time for any games.
-    * Get the number ID's for this buttons with `jstest` (or any other similar program)
-    * Edit the configuration file (either `/etc/jslisten.cfg` or `~/.jslisten`) and maintain the button ID's and the program which you want to run.
-    * Make sure this script/program can handle multiple simultanios calls! Even if the daemon will wait till this program ends, you never know... And we like to press key combinations many times, if something doesn't work immediately...
+- I assume your joystick setup is already done and you can see activation with `jstest /dev/input/js0`
+    - There are many tutorials out there and you should not proceed if this doesn't work for you!
+- Think which button combination will work for your gamepad. You can configure up to 4 button combination. In my case i picked `Left Shoulder` + `Right Shoulder` + `SELECT`. I'm pretty sure I will not need to press this buttons at the same time for any games.
+- Get the number ID's for this buttons with `jstest` (or any other similar program)
+- Edit the configuration file (either `/etc/jslisten.cfg` or `~/.jslisten`) and maintain the button ID's and the program which you want to run.
+- Make sure this script/program can handle multiple simultanios calls! Even if the daemon will wait till this program ends, you never know... And we like to press key combinations many times, if something doesn't work immediately...
 
 ### Example Config
 
@@ -109,8 +109,8 @@ button4=
 
 ## Known limitations
 
-    * Kodi and X11 are blocking `/dev/input/*` events. For X11 you can add an exception in `/usr/share/X11/xorg.conf.d/10-quirks.conf` but Kodi is ... nasty ... As long as they don't implement a nice unified unput support, my workaround is to revoke the kodi group rights to the input devices. :(
-    * If you experience any issues, feel free to use `--loglevel debug` option when starting the binary (either manually or adding to the `systemctl` [reference above] call) and check syslog.
+- Kodi and X11 are blocking `/dev/input/*` events. For X11 you can add an exception in `/usr/share/X11/xorg.conf.d/10-quirks.conf` but Kodi is ... nasty ... As long as they don't implement a nice unified unput support, my workaround is to revoke the kodi group rights to the input devices. :(
+- If you experience any issues, feel free to use `--loglevel debug` option when starting the binary (either manually or adding to the `systemctl` [reference above] call) and check syslog.
 
 ## Multiple key combinations
 
