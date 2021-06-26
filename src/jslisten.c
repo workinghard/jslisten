@@ -47,7 +47,7 @@
 // Some static stuff
 //---------------------------------
 #define sizearray(a)  (sizeof(a) / sizeof((a)[0]))
-#define BUTTON_DEFINED_RANGE -2147483647 // sizeof(long)
+#define BUTTON_UNSET -1
 #define true 0
 #define false 1
 
@@ -69,23 +69,24 @@ char myDevPath[NAME_LENGTH];
 int joyFD;
 struct KeySet {
   // Set Default unassigned
-  long button1;
-  int button1Active;
-  long button2;
-  int button2Active;
-  long button3;
-  int button3Active;
-  long button4;
-  int button4Active;
-  int activeButtons;
-  int isTriggered;
   char swFilename[100];
+  long delay;
+  long button1;
+  unsigned long button1Active;
+  long button2;
+  unsigned long button2Active;
+  long button3;
+  unsigned long button3Active;
+  long button4;
+  unsigned long button4Active;
+  int hotKeyCount;
+  int isTriggered;
 };
 
 struct KeySet myKeys[MAX_HOTKEYS];
 
-int numHotkeys = 0;
-//int buttonActive = 0;
+int delayedSection = -1;
+int hotKeyCombos = 0;
 int logLevel = LOG_INFO;
 
 // recognized values for --loglevel
@@ -107,12 +108,32 @@ static struct option long_options[] = {
 typedef enum {PLAIN, HOLD} mode_type;
 mode_type mode = PLAIN;
 
+unsigned long getMicrotime(){
+  struct timeval currentTime;
+  gettimeofday(&currentTime, NULL);
+  return currentTime.tv_sec * (int)1e6 + currentTime.tv_usec;
+}
+
+//---------------------------------------------
+// Reset the keys
+//---------------------------------------------
+void resetHotkeys() {
+  syslog(LOG_DEBUG, "Reseting Keys");
+  for (int i=0; i<hotKeyCombos; i++) {
+    myKeys[i].button1Active = 0;
+    myKeys[i].button2Active = 0;
+    myKeys[i].button3Active = 0;
+    myKeys[i].button4Active = 0;
+    myKeys[i].isTriggered = false;
+  }
+  delayedSection = -1;
+}
 
 //---------------------------------
 // Check if the button was assigned
 //---------------------------------
 int buttonDefined(int val) {
-  if ( val > BUTTON_DEFINED_RANGE ) {
+  if ( val > BUTTON_UNSET ) {
     return true;
   } else {
     return false;
@@ -168,49 +189,61 @@ void readConfig(void) {
 
   /* section/key enumeration */
   for (s = 0; ini_getsection(s, section, sizearray(section), iniFile) > 0; s++) {
-    if ( numHotkeys < MAX_HOTKEYS ) {
+    if ( hotKeyCombos < MAX_HOTKEYS ) {
       for (k = 0; ini_getkey(section, k, str, sizearray(str), iniFile) > 0; k++) {
-        if ( strncmp("program", str, 7) == 0 ) { // Key found
-          n = ini_gets(section, str, "dummy", myKeys[numHotkeys].swFilename, sizearray(myKeys[numHotkeys].swFilename), iniFile);
-          if ( n > 5 && strncmp("dummy", myKeys[numHotkeys].swFilename, 5) != 0 ) { // Value is not empty
-            syslog(LOG_INFO, "Filename: %s\n", myKeys[numHotkeys].swFilename);
+
+        if ( strncmp("program", str, 7) == 0 ) { 
+          n = ini_gets(section, str, "dummy", myKeys[hotKeyCombos].swFilename, sizearray(myKeys[hotKeyCombos].swFilename), iniFile);
+          if ( n > 5 && strncmp("dummy", myKeys[hotKeyCombos].swFilename, 5) != 0 ) { // Value is not empty
+            syslog(LOG_INFO, "Filename: %s\n", myKeys[hotKeyCombos].swFilename);
           }
         }
-        if ( strncmp("button1", str, 7) == 0 ) { // Key found
-          l = ini_getl(section, str, BUTTON_DEFINED_RANGE, iniFile);
+
+        if ( strncmp("delay", str, 5) == 0 ) { 
+          l = ini_getl(section, str, 0, iniFile);
+          syslog(LOG_INFO, "Delay: %ld\n", l);
+          myKeys[hotKeyCombos].delay = l * 1000000;
+        }
+
+
+        if ( strncmp("button1", str, 7) == 0 ) { 
+          l = ini_getl(section, str, BUTTON_UNSET, iniFile);
           if ( buttonDefined(l) == true ) { // Value is not empty
             syslog(LOG_INFO, "button1: %ld\n", l);
-            myKeys[numHotkeys].button1 = l;
-            myKeys[numHotkeys].activeButtons++;
+            myKeys[hotKeyCombos].button1 = l;
+            myKeys[hotKeyCombos].hotKeyCount++;
           }
         }
-        if ( strncmp("button2", str, 7) == 0 ) { // Key found
-          l = ini_getl(section, str, BUTTON_DEFINED_RANGE, iniFile);
+
+        if ( strncmp("button2", str, 7) == 0 ) { 
+          l = ini_getl(section, str, BUTTON_UNSET, iniFile);
           if ( buttonDefined(l) == true ) { // Value is not empty
             syslog(LOG_INFO, "button2: %ld\n", l);
-            myKeys[numHotkeys].button2 = l;
-            myKeys[numHotkeys].activeButtons++;
+            myKeys[hotKeyCombos].button2 = l;
+            myKeys[hotKeyCombos].hotKeyCount++;
           }
         }
-        if ( strncmp("button3", str, 7) == 0 ) { // Key found
-          l = ini_getl(section, str, BUTTON_DEFINED_RANGE, iniFile);
+
+        if ( strncmp("button3", str, 7) == 0 ) { 
+          l = ini_getl(section, str, BUTTON_UNSET, iniFile);
           if ( buttonDefined(l) == true ) { // Value is not empty
             syslog(LOG_INFO, "button3: %ld\n", l);
-            myKeys[numHotkeys].button3 = l;
-            myKeys[numHotkeys].activeButtons++;
+            myKeys[hotKeyCombos].button3 = l;
+            myKeys[hotKeyCombos].hotKeyCount++;
           }
         }
-        if ( strncmp("button4", str, 7) == 0 ) { // Key found
-          l = ini_getl(section, str, BUTTON_DEFINED_RANGE, iniFile);
+
+        if ( strncmp("button4", str, 7) == 0 ) { 
+          l = ini_getl(section, str, BUTTON_UNSET, iniFile);
           if ( buttonDefined(l) == true ) { // Value is not empty
             syslog(LOG_INFO, "button4: %ld\n", l);
-            myKeys[numHotkeys].button4 = l;
-            myKeys[numHotkeys].activeButtons++;
+            myKeys[hotKeyCombos].button4 = l;
+            myKeys[hotKeyCombos].hotKeyCount++;
           }
         }
       } /* for */
     }
-    numHotkeys++; // Remember how many sections we have
+    hotKeyCombos++; // Remember how many sections we have
   } /* for */
 }
 
@@ -219,7 +252,7 @@ void readConfig(void) {
 //---------------------------------------------
 int checkConfig(void) {
   int rc=0;
-  for (int i=0; i<numHotkeys; i++) {
+  for (int i=0; i<hotKeyCombos; i++) {
     if ( sizearray(myKeys[i].swFilename) < 3 ) { // no program make no sense
       syslog(LOG_ERR, "err: no valid filename provided in section %d. Please check ini file\n", i);
       rc = 1;
@@ -229,7 +262,7 @@ int checkConfig(void) {
       rc = 1;
     }
     syslog(LOG_INFO, "Active assigned buttons in section %d: ", i);
-    syslog(LOG_INFO, "%d\n", myKeys[i].activeButtons);
+    syslog(LOG_INFO, "%d\n", myKeys[i].hotKeyCount);
 
   }
   return rc;
@@ -241,56 +274,70 @@ int checkConfig(void) {
 int checkButtonPressed(struct js_event js) {
   int section = -1;
   int i;
+
   // Update the button press in all key combinations
-  for (i=0; i<numHotkeys; i++) {
+  syslog(LOG_DEBUG, "Checking button state");
+  for (i=0; i<hotKeyCombos; i++) {
     if ( js.number == myKeys[i].button1 ) {
-      myKeys[i].button1Active = js.value;
+      if (js.value == 1) {
+        if ( myKeys[i].button1Active == 0 ) { myKeys[i].button1Active = getMicrotime(); }
+      } else { 
+        myKeys[i].button1Active = 0; 
+        if (i == delayedSection) { delayedSection = -1; }
+      }
     } else if ( js.number == myKeys[i].button2 ) {
-      myKeys[i].button2Active = js.value;
+      if (js.value == 1) {
+        if ( myKeys[i].button2Active == 0 ) { myKeys[i].button2Active = getMicrotime(); }
+      } else { myKeys[i].button2Active = 0; }
     } else if ( js.number == myKeys[i].button3 ) {
-      myKeys[i].button3Active = js.value;
+      if (js.value == 1) {
+        if ( myKeys[i].button3Active == 0 ) { myKeys[i].button3Active = getMicrotime(); }
+      } else { myKeys[i].button3Active = 0; }
     } else if ( js.number == myKeys[i].button4 ) {
-      myKeys[i].button4Active = js.value;
+      if (js.value == 1) {
+        if ( myKeys[i].button4Active == 0 ) { myKeys[i].button4Active = getMicrotime(); }
+      } else { myKeys[i].button4Active = 0; }
     }
   }
 
   // Analyse combinations
-  for (i=0; i<numHotkeys; i++) {
-    switch (myKeys[i].activeButtons) {
+  for (i=0; i<hotKeyCombos; i++) {
+    switch (myKeys[i].hotKeyCount) {
     case 1:
-      if ( myKeys[i].button1Active == 1 ) { myKeys[i].isTriggered = 1; section = i; }
+      if ( myKeys[i].button1Active > 0  ) { 
+        unsigned long hold_time = getMicrotime() - myKeys[i].button1Active;
+        syslog(LOG_DEBUG, "Delayed: %ld\n", hold_time);
+        if (myKeys[i].delay == 0 || hold_time >= myKeys[i].delay) {
+          myKeys[i].isTriggered = 1; 
+          section = i; 
+          delayedSection = -1;
+        } else {
+          delayedSection = myKeys[i].delay > 0 ? 1 : delayedSection;
+        }
+      } 
       break;
     case 2:
-      if ( myKeys[i].button1Active == 1 && myKeys[i].button2Active == 1 ) {
-        myKeys[i].isTriggered = 1; section = i;
+      if ( myKeys[i].button1Active > 0 && myKeys[i].button2Active > 0 ) {
+        myKeys[i].isTriggered = 1; 
+        section = i;
       }
       break;
     case 3:
-      if ( myKeys[i].button1Active == 1 && myKeys[i].button2Active == 1 && myKeys[i].button3Active == 1 ) {
-        myKeys[i].isTriggered = 1; section = i;
+      if ( myKeys[i].button1Active > 0 && myKeys[i].button2Active > 0 && myKeys[i].button3Active > 0 ) {
+        myKeys[i].isTriggered = 1; 
+        section = i;
       }
       break;
     case 4:
-      if ( myKeys[i].button1Active == 1 && myKeys[i].button2Active == 1 && myKeys[i].button3Active == 1 && myKeys[i].button4Active == 1) {
-        myKeys[i].isTriggered = 1; section = i;
+      if ( myKeys[i].button1Active > 0 && myKeys[i].button2Active > 0 
+          && myKeys[i].button3Active > 0 && myKeys[i].button4Active > 0 ) {
+        myKeys[i].isTriggered = 1; 
+        section = i;
       }
       break;
     }
   }
   return section;
-}
-
-//---------------------------------------------
-// Reset the keys
-//---------------------------------------------
-void resetHotkeys() {
-  for (int i=0; i<numHotkeys; i++) {
-    myKeys[i].button1Active = 0;
-    myKeys[i].button2Active = 0;
-    myKeys[i].button3Active = 0;
-    myKeys[i].button4Active = 0;
-    myKeys[i].isTriggered = false;
-  }
 }
 
 //---------------------------------------------
@@ -462,7 +509,7 @@ void listenJoy (void) {
 // returns 0 if any of the n-1 is still pressed
 //---------------------------------------------
 int button_held(int js_btn_number, int button_set_idx) {
-  int activeKeys = myKeys[button_set_idx].activeButtons - 1;
+  int activeKeys = myKeys[button_set_idx].hotKeyCount - 1;
   switch (activeKeys) {
   case 1:
     return js_btn_number == myKeys[button_set_idx].button1;
@@ -545,12 +592,13 @@ int bindJoy(void) {
 
   // Non-blocking reading
   struct js_event js;
-  int needTrigger;
+  int triggerSection;
   int lastTriggeredSet = -1;
   fcntl(joyFD, F_SETFL, O_NONBLOCK);
 
   while (1) {
-    while (read(joyFD, &js, sizeof(struct js_event)) == sizeof(struct js_event))  {
+    while (read(joyFD, &js, sizeof(struct js_event)) == sizeof(struct js_event) || delayedSection >= 0) {
+      syslog(LOG_DEBUG, "Button Event");
       if (js.type == JS_EVENT_BUTTON) {
         syslog(LOG_DEBUG, "Event: type %d, time %d, number %d, value %d\n",
                js.type, js.time, js.number, js.value);
@@ -558,15 +606,16 @@ int bindJoy(void) {
           resetHotkeys();
           lastTriggeredSet = -1;
         }
-        needTrigger = checkButtonPressed(js);
-        if ( needTrigger > -1 ) {   // We have found one key section
+        triggerSection = checkButtonPressed(js);
+        if ( triggerSection > -1 ) {   
+          // We have found one key section
           if (mode == HOLD) {
             // set to "engaged" mode (lastTriggeredSet > -1) and "fire" command once
-            lastTriggeredSet = needTrigger;
+            lastTriggeredSet = triggerSection;
           }
           syslog(LOG_INFO, "Swtching mode. ...\n");
           // call external program
-          int rc = system(myKeys[needTrigger].swFilename);
+          int rc = system(myKeys[triggerSection].swFilename);
           if ( rc == 0 ) {
             syslog(LOG_INFO, "Call succesfull\n");
           } else {
@@ -672,15 +721,15 @@ void parse_command_line(int argc, char* argv[]) {
 //---------------------------------------------
 void init_button_keysets() {
   for (int i=0; i<MAX_HOTKEYS; i++) {
-    myKeys[i].button1 = BUTTON_DEFINED_RANGE;
+    myKeys[i].button1 = BUTTON_UNSET;
     myKeys[i].button1Active = 0;
-    myKeys[i].button2 = BUTTON_DEFINED_RANGE;
+    myKeys[i].button2 = BUTTON_UNSET;
     myKeys[i].button2Active = 0;
-    myKeys[i].button3 = BUTTON_DEFINED_RANGE;
+    myKeys[i].button3 = BUTTON_UNSET;
     myKeys[i].button3Active = 0;
-    myKeys[i].button4 = BUTTON_DEFINED_RANGE;
+    myKeys[i].button4 = BUTTON_UNSET;
     myKeys[i].button4Active = 0;
-    myKeys[i].activeButtons = 0;
+    myKeys[i].hotKeyCount = 0;
     myKeys[i].isTriggered = false;
   }
 }
