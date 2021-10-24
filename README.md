@@ -33,7 +33,7 @@ After searching the internet, I found nothing really interesting. Kodi addon wil
 
 ```
 cd /tmp
-git clone git@github.com:workinghard/jslisten.git
+git clone https://github.com/workinghard/jslisten.git
 cd jslisten
 
 echo "Building jslisten binary"
@@ -44,7 +44,7 @@ sudo mkdir -p /opt/bin
 sudo cp bin/jslisten /opt/bin/jslisten
 
 echo "Copying default config; you will need to modify this file for your use case."
-cp /etc/jslisten.cfg ~/.jslisten
+cp etc/jslisten.cfg ~/.jslisten
 
 echo "Adding jslisten support at boot"
 sudo cp utils/jslisten.service /etc/systemd/system
