@@ -654,12 +654,10 @@ void parse_command_line(int argc, char* argv[]) {
     case 'm':
       if (strncmp(optarg, MODE_HOLD_STR, strlen(MODE_HOLD_STR)) == 0) {
         mode = HOLD;
-      }
-      if (strncmp(optarg, MODE_PLAIN_STR, strlen(MODE_PLAIN_STR)) == 0) {
+      } else if (strncmp(optarg, MODE_PLAIN_STR, strlen(MODE_PLAIN_STR)) == 0) {
         mode = PLAIN;
       } else {
         syslog(LOG_WARNING, "--mode %s parameter unknown. Using default.\n", optarg);
-
       }
       break;
     case '?':
