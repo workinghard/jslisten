@@ -417,10 +417,15 @@ void listenJoy (void) {
               sysPath = udev_device_get_syspath(mydev);
               devPath = udev_device_get_devnode(mydev);
 
-              if (sysPath != NULL && devPath != NULL && strstr(sysPath, myDevPath) != 0) {
-                syslog(LOG_NOTICE, "Found Device: %s\n", devPath);
-                if ((joyFD = open(devPath, O_RDONLY)) < 0) { // Open the file descriptor
-                  syslog(LOG_INFO, "error: failed to open fd\n");
+              if (sysPath != NULL && devPath != NULL && strstr(sysPath, "/js") != 0) {
+                syslog (LOG_NOTICE, "Found Device: %s\n", devPath);
+                if (joyFD < 0 || strcmp(devPath, myDevPath) == 0) {
+                  // Open the file descriptor
+                  if ((joyFD = open(devPath, O_RDONLY)) < 0) { 
+                    syslog (LOG_INFO, "error: failed to open fd\n");
+                  } else {
+                    syslog (LOG_NOTICE, "Watching: %s\n", devPath);
+                  }
                 }
               }
 
@@ -649,12 +654,10 @@ void parse_command_line(int argc, char* argv[]) {
     case 'm':
       if (strncmp(optarg, MODE_HOLD_STR, strlen(MODE_HOLD_STR)) == 0) {
         mode = HOLD;
-      }
-      if (strncmp(optarg, MODE_PLAIN_STR, strlen(MODE_PLAIN_STR)) == 0) {
+      } else if (strncmp(optarg, MODE_PLAIN_STR, strlen(MODE_PLAIN_STR)) == 0) {
         mode = PLAIN;
       } else {
         syslog(LOG_WARNING, "--mode %s parameter unknown. Using default.\n", optarg);
-
       }
       break;
     case '?':
