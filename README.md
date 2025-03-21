@@ -33,7 +33,7 @@ After searching the internet, I found nothing really interesting. Kodi addon wil
 
 ```
 cd /tmp
-git clone git@github.com:workinghard/jslisten.git
+git clone https://github.com/workinghard/jslisten.git
 cd jslisten
 
 echo "Building jslisten binary"
